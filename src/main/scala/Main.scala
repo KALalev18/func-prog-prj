@@ -329,3 +329,169 @@ object REPS { // Renewable Energy Plant System
     ("Normal", "")
   }
 }
+
+
+  def calculateMean(values: List[Double]): Double = {
+    if (values.isEmpty) 0.0 else values.sum / values.length
+  }
+
+  def calculateMedian(values: List[Double]): Double = { // Calculate median
+    if (values.isEmpty) return 0.0
+
+    val sortedValues = values.sorted
+    val n = sortedValues.length
+
+    if (n % 2 == 0) {
+      val middle1 = sortedValues(n / 2 - 1)
+      val middle2 = sortedValues(n / 2)
+      (middle1 + middle2) / 2.0
+    } else {
+      sortedValues(n / 2)
+    }
+  }
+
+  def calculateMode(values: List[Double]): Double = {
+    if (values.isEmpty) return 0.0
+
+    val frequencies = values.foldLeft(Map.empty[Double, Int]) {
+      (map, value) => // Count frequencies
+        map + (value -> (map.getOrElse(value, 0) + 1))
+    }
+
+    // Find the max frequency
+    val maxFrequency = frequencies.values.max
+
+    // Find all values with the max frequency
+    val modes = frequencies.filter(_._2 == maxFrequency).keys.toList
+
+    // Return the smallest mode if there are multiple
+    modes.min
+  }
+
+  // Range calculation
+  def calculateRange(values: List[Double]): Double = {
+    if (values.isEmpty) 0.0 else values.max - values.min
+  }
+
+  // Midrange calculation
+  def calculateMidrange(values: List[Double]): Double = {
+    if (values.isEmpty) 0.0 else (values.max + values.min) / 2.0
+  }
+
+  // File I/O functions - this is the non-functional part as specified in requirements
+  def appendReadingToFile(filename: String, reading: EnergyReading): Unit = {
+    val fw = new FileWriter(filename, true)
+    try {
+      val line =
+        s"${formatTimestamp(reading.timestamp)},${reading.source},${reading.outputKW},${reading.status}\n"
+      fw.write(line)
+    } finally {
+      fw.close()
+    }
+  }
+
+  def saveAlert(filename: String, alert: Alert): Unit = { // Save alert to file
+    val file = new File(filename)
+    val exists = file.exists()
+
+    val fw = new FileWriter(file, true)
+    try {
+      if (!exists) {
+        fw.write("Timestamp,Source,Message,Severity\n")
+      }
+      val line =
+        s"${formatTimestamp(alert.timestamp)},${alert.source},${alert.message},${alert.severity}\n"
+      fw.write(line)
+    } finally {
+      fw.close()
+    }
+  }
+
+  def readEnergyData(filename: String): Try[List[EnergyReading]] = { // Read energy data from file
+    Try {
+      val file = new File(filename)
+      if (!file.exists()) {
+        return Success(List.empty)
+      }
+
+      val lines = Source.fromFile(filename).getLines().toList
+
+      if (lines.size <= 1) {
+        return Success(List.empty)
+      }
+
+      val dataLines = lines.tail
+
+      // Parse each line into an EnergyReading using higher-order function (flatMap)
+      val readings = dataLines.flatMap { line =>
+        val fields = line.split(",")
+        if (fields.length < 4) None
+        else {
+          Try {
+            val timestamp = parseTimestamp(fields(0))
+            val source = fields(1) match {
+              case "Solar" => Solar
+              case "Wind"  => Wind
+              case "Hydro" => Hydro
+              case _ =>
+                throw new Exception(s"Unknown energy source: ${fields(1)}")
+            }
+            val outputKW = fields(2).toDouble
+            val status = fields(3)
+
+            EnergyReading(timestamp, source, outputKW, status)
+          }.toOption
+        }
+      }
+
+      readings
+    }
+  }
+
+  def readAlerts(filename: String): Try[List[Alert]] = { // Read alerts from file
+    Try {
+      val file = new File(filename)
+      if (!file.exists()) {
+        return Success(List.empty)
+      }
+
+      val lines = Source.fromFile(filename).getLines().toList
+
+      if (lines.size <= 1) {
+        return Success(List.empty)
+      }
+
+      val dataLines = lines.tail
+
+      val alerts = dataLines.flatMap { line =>
+        val fields =
+          line.split(",", 4)
+        if (fields.length < 4) None
+        else {
+          Try {
+            val timestamp = parseTimestamp(fields(0))
+            val source = fields(1) match {
+              case "Solar" => Solar
+              case "Wind"  => Wind
+              case "Hydro" => Hydro
+              case _ =>
+                throw new Exception(s"Unknown energy source: ${fields(1)}")
+            }
+            val message = fields(2)
+            val severity = fields(3).toInt
+
+            Alert(timestamp, source, message, severity)
+          }.toOption
+        }
+      }
+
+      alerts
+    }
+  }
+  def formatTimestamp(timestamp: LocalDateTime): String = { // Format timestamp to string
+    timestamp.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+  }
+
+  def parseTimestamp(str: String): LocalDateTime = { // Parse string to LocalDateTime
+    LocalDateTime.parse(str, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+  }
