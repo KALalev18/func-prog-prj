@@ -1,0 +1,6 @@
+Timestamp,Source,OutputKW,Status
+2025-04-28 15:16:23,Solar,100.0,OK
+2025-04-28 15:23:11,Hydro,40.0,Error
+2025-04-28 15:23:47,Wind,65.0,Warning
+2025-04-28 15:24:30,Wind,35.0,OK
+2025-05-04 13:25:40,Solar,100.0,Warning
