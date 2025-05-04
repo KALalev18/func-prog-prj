@@ -156,6 +156,153 @@ object REPS { // Renewable Energy Plant System
     }
   }
 
+// my part
+
+def viewEnergyData(filename: String): Unit = { // View energy generation data
+    println("\n== Energy generation view ==")
+
+    val readingsOpt = readEnergyData(filename)
+
+    readingsOpt match {
+      case Success(readings) if readings.nonEmpty =>
+        println("\nTimestamp\t\t| Source\t| Output (kW)\t| Status")
+        println("-" * 70)
+
+        readings.foreach { reading => // Display each reading
+          println(
+            f"${formatTimestamp(reading.timestamp)}\t| ${reading.source}\t| ${reading.outputKW}%.2f\t\t| ${reading.status}"
+          )
+        }
+        val totalEnergy = readings.map(_.outputKW).sum
+        val filterBySource = (source: EnergySource) =>
+          (reading: EnergyReading) => reading.source == source
+        val solarReadings = readings.filter(filterBySource(Solar))
+        val windReadings = readings.filter(filterBySource(Wind))
+        val hydroReadings = readings.filter(filterBySource(Hydro))
+        val solarTotal = solarReadings.map(_.outputKW).sum
+        val windTotal = windReadings.map(_.outputKW).sum
+        val hydroTotal = hydroReadings.map(_.outputKW).sum
+
+        println("\nTotal energy: " + f"$totalEnergy%.2f kW")
+        println(
+          f"Solar: $solarTotal%.2f kW, Wind: $windTotal%.2f kW, Hydro: $hydroTotal%.2f kW" // Display total energy by source
+        )
+
+      case Success(_) =>
+        println("No energy data available.")
+
+      case Failure(e) =>
+        println(s"Error reading energy data: ${e.getMessage}")
+    }
+  }
+
+  def analyzeData(filename: String): Unit = {
+    println("\n== Energy data analysis ==")
+
+    val readingsOpt = readEnergyData(filename)
+
+    readingsOpt match {
+      case Success(readings) if readings.nonEmpty =>
+        val filteredReadings = getTimeFilteredReadings(readings)
+
+        filteredReadings match {
+          case Some(timeFiltered) =>
+            val sourceFiltered = getSourceFilteredReadings(timeFiltered)
+
+            sourceFiltered match {
+              case Some((filtered, sourceName)) =>
+                val outputValues = filtered.map(_.outputKW)
+                val statistics = calculateStatistics(outputValues)
+
+                println(s"\nStatistical analysis for $sourceName:")
+                println(f"Mean: ${statistics.mean}%.2f kW")
+                println(f"Median: ${statistics.median}%.2f kW")
+                println(f"Mode: ${statistics.mode}%.2f kW")
+                println(f"Range: ${statistics.range}%.2f kW")
+                println(f"Midrange: ${statistics.midrange}%.2f kW")
+
+              case None =>
+            }
+
+          case None =>
+        }
+
+      case Success(_) =>
+        println("No energy data available for analysis.")
+
+      case Failure(e) =>
+        println(s"Error reading energy data: ${e.getMessage}")
+    }
+  }
+
+  case class Statistics( // Case class for statistical results
+      mean: Double,
+      median: Double,
+      mode: Double,
+      range: Double,
+      midrange: Double
+  )
+
+  def calculateStatistics(values: List[Double]): Statistics = { // Calculate statistics
+    if (values.isEmpty) {
+      Statistics(0.0, 0.0, 0.0, 0.0, 0.0)
+    } else {
+      Statistics(
+        mean = calculateMean(values),
+        median = calculateMedian(values),
+        mode = calculateMode(values),
+        range = calculateRange(values),
+        midrange = calculateMidrange(values)
+      )
+    }
+  }
+
+  def getTimeFilteredReadings(
+      readings: List[EnergyReading]
+  ): Option[List[EnergyReading]] = {
+    println(
+      "\nSelect time period for analysis:"
+    ) // Higher-order function for filtering
+    println("1. Hourly")
+    println("2. Daily")
+    println("3. Weekly")
+    println("4. Monthly")
+    print("\nSelect option: ")
+
+    val periodOption = scala.io.StdIn.readLine()
+
+    val now = LocalDateTime.now()
+
+    // Higher-order function for filtering by time
+    val filterByTime = (cutoff: LocalDateTime) =>
+      (reading: EnergyReading) => reading.timestamp.isAfter(cutoff)
+
+    val filtered = periodOption match {
+      case "1" => // last 1 hour
+        readings.filter(filterByTime(now.minusHours(1)))
+
+      case "2" => // last 24 hours
+        readings.filter(filterByTime(now.minusDays(1)))
+
+      case "3" => // last 7 days
+        readings.filter(filterByTime(now.minusDays(7)))
+
+      case "4" => // last 30 days
+        readings.filter(filterByTime(now.minusDays(30)))
+
+      case _ =>
+        println("Invalid option, using all data.")
+        readings
+    }
+
+    if (filtered.isEmpty) { //  Check if filtered list is empty
+      println("No data available for the selected time period.")
+      None
+    } else {
+      Some(filtered)
+    }
+  }
+
   // Get source-filtered readings based on user input
   def getSourceFilteredReadings(
       readings: List[EnergyReading]
