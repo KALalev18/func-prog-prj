@@ -155,10 +155,9 @@ object REPS { // Renewable Energy Plant System
       case _   => None
     }
   }
+  // 1. Jesse
 
-// my part
-
-def viewEnergyData(filename: String): Unit = { // View energy generation data
+  def viewEnergyData(filename: String): Unit = { // View energy generation data
     println("\n== Energy generation view ==")
 
     val readingsOpt = readEnergyData(filename)
@@ -303,11 +302,12 @@ def viewEnergyData(filename: String): Unit = { // View energy generation data
     }
   }
 
+// 2. Riaz
+
   // Get source-filtered readings based on user input
   def getSourceFilteredReadings(
       readings: List[EnergyReading]
   ): Option[(List[EnergyReading], String)] = {
-    // Ask the user to select an energy source
     println("\nSelect energy source:")
     println("1. All sources")
     println("2. Solar")
@@ -315,133 +315,109 @@ def viewEnergyData(filename: String): Unit = { // View energy generation data
     println("4. Hydro")
     print("\nSelect option: ")
 
-    // Read the user's choice
     val sourceOption = scala.io.StdIn.readLine()
 
-    // Filter readings based on the selected source
     val (filtered, sourceName) =
-      sourceOption match {
-        case "1" => (readings, "All Sources") // No filtering
-        case "2" => (readings.filter(_.source == Solar), "Solar") // Filter Solar
-        case "3" => (readings.filter(_.source == Wind), "Wind") // Filter Wind
-        case "4" => (readings.filter(_.source == Hydro), "Hydro") // Filter Hydro
+      sourceOption match { // Higher-order function for filtering by source
+        case "1" => (readings, "All Sources")
+        case "2" => (readings.filter(_.source == Solar), "Solar")
+        case "3" => (readings.filter(_.source == Wind), "Wind")
+        case "4" => (readings.filter(_.source == Hydro), "Hydro")
         case _ =>
-          // Handle invalid input
           println("Invalid option, using all sources.")
           (readings, "All Sources")
       }
 
-    // Check if there are any readings after filtering
     if (filtered.isEmpty) {
       println("No data available for the selected source.")
-      None // Return None if no data
+      None
     } else {
-      Some((filtered, sourceName)) // Return filtered readings and source name
+      Some((filtered, sourceName))
     }
   }
 
-  // Monitor system health and generate alerts
+  // Function to monitor system health and generate alerts
   def monitorSystemHealth(dataFile: String, alertsFile: String): Unit = {
     println("\n== System health monitoring ==")
-    // Read energy data from the file
     val readingsOpt = readEnergyData(dataFile)
 
     readingsOpt match {
-      case Success(readings) if readings.nonEmpty =>
-        // Group readings by energy source
+      case Success(readings)
+          if readings.nonEmpty => // Check if readings are available
         val readingsBySource = readings.groupBy(_.source)
 
         println("\nCurrent system status:")
-        // Check the status for each energy source
-        List(Solar, Wind, Hydro).foreach { source =>
+        List(Solar, Wind, Hydro).foreach { source => // Iterate over each source
           readingsBySource
-            .get(source) // Get readings for the source
-            .flatMap(_.maxByOption(_.timestamp)) // Get the latest reading
+            .get(source)
+            .flatMap(_.maxByOption(_.timestamp))
             .foreach { latestReading =>
-              // Check the energy output and get status and message
               val (status, message) = checkEnergyOutput(
                 latestReading,
                 readingsBySource.getOrElse(source, List.empty)
               )
-              println(s"${source} System: $status") // Print the status
+              println(s"${source} System: $status") // Display current status
               if (message.nonEmpty) {
-                // Create an alert if there is a message
                 val alert = Alert(
                   LocalDateTime.now(),
                   source,
                   message,
-                  if (status == "Critical") 5 else 3 // Set severity
+                  if (status == "Critical") 5 else 3
                 )
-                saveAlert(alertsFile, alert) // Save the alert
+                saveAlert(alertsFile, alert)
               }
             }
         }
-        // Show recent alerts
         displayRecentAlerts(alertsFile)
 
       case Success(_) =>
-        // No readings available
         println("No energy data available for monitoring.")
 
       case Failure(e) =>
-        // Handle error while reading data
         println(s"Error reading energy data: ${e.getMessage}")
     }
   }
 
-  // Display recent alerts from the alerts file
-  def displayRecentAlerts(alertsFile: String): Unit = {
+  def displayRecentAlerts(alertsFile: String): Unit = { // Display recent alerts
     println("\nRecent Alerts:")
 
-    // Read alerts from the file
     val alertsOpt = readAlerts(alertsFile)
 
     alertsOpt match {
       case Success(alerts) if alerts.nonEmpty =>
-        // Sort alerts by timestamp and take the latest 5
         val recentAlerts = alerts
           .sortBy(_.timestamp)(Ordering[LocalDateTime].reverse)
           .take(5)
 
-        // Print each alert
         recentAlerts.foreach { alert =>
           println(
             s"[${formatTimestamp(alert.timestamp)}] ${alert.source}: ${alert.message} (Severity: ${alert.severity})"
           )
         }
 
-      case _ =>
-        // No alerts found
-        println("No alerts found.")
+      case _ => println("No alerts found.")
     }
   }
 
-  // Check energy output and generate alerts if needed
-  def checkEnergyOutput(
+  def checkEnergyOutput( // Check energy output and generate alerts
       current: EnergyReading,
       history: List[EnergyReading]
   ): (String, String) = {
-    // If the current status is "Error", return critical status
     if (current.status == "Error") {
       return ("Critical", s"${current.source} system reporting Error status!")
     }
 
-    // If the current status is "Warning", return warning status
     if (current.status == "Warning") {
       return ("Warning", s"${current.source} system reporting Warning status.")
     }
 
-    // Check if there are at least 5 historical readings
-    if (history.size >= 5) {
-      // Get the 5 most recent readings
+    if (history.size >= 5) { // Check if there are enough historical readings
       val recentReadings = history
         .sortBy(_.timestamp)(Ordering[LocalDateTime].reverse)
         .take(5)
 
-      // Calculate the average output
       val avgOutput = calculateMean(recentReadings.map(_.outputKW))
 
-      // Check if the current output is significantly lower than the average
       if (current.outputKW < avgOutput * 0.7) {
         return (
           "Warning",
@@ -456,15 +432,13 @@ def viewEnergyData(filename: String): Unit = { // View energy generation data
       }
     }
 
-    // Set minimum thresholds for each energy source
     val minThreshold =
-      current.source match {
+      current.source match { // Set minimum thresholds based on source
         case Solar => 10.0
         case Wind  => 15.0
         case Hydro => 50.0
       }
 
-    // Check if the current output is below the minimum threshold
     if (current.outputKW < minThreshold) {
       return (
         "Warning",
@@ -472,12 +446,13 @@ def viewEnergyData(filename: String): Unit = { // View energy generation data
       )
     }
 
-    // If all checks pass, return normal status
+    // All checks passed
     ("Normal", "")
   }
-}
 
+  // 3. Shafim
 
+  // Statistical functions
   def calculateMean(values: List[Double]): Double = {
     if (values.isEmpty) 0.0 else values.sum / values.length
   }
@@ -642,3 +617,4 @@ def viewEnergyData(filename: String): Unit = { // View energy generation data
   def parseTimestamp(str: String): LocalDateTime = { // Parse string to LocalDateTime
     LocalDateTime.parse(str, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
   }
+}

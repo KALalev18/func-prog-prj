@@ -4,3 +4,8 @@ Timestamp,Source,OutputKW,Status
 2025-04-28 15:23:47,Wind,65.0,Warning
 2025-04-28 15:24:30,Wind,35.0,OK
 2025-05-04 13:25:40,Solar,100.0,Warning
+2025-05-05 19:24:23,Wind,1000.0,Warning
+2025-05-05 19:25:38,Solar,100.0,OK
+2025-05-05 19:26:07,Hydro,40.0,Error
+2025-05-05 19:28:47,Solar,100.0,Error
+2025-05-05 19:30:57,Solar,100.0,Error

@@ -6,3 +6,6 @@ Timestamp,Source,Message,Severity
 2025-04-28 15:24:05,Hydro,Hydro system reporting Error status!,5
 2025-05-04 13:26:31,Solar,Solar system reporting Warning status.,3
 2025-05-04 13:26:31,Hydro,Hydro system reporting Error status!,5
+2025-05-05 19:31:16,Solar,Solar system reporting Error status!,5
+2025-05-05 19:31:16,Wind,Wind system reporting Warning status.,3
+2025-05-05 19:31:16,Hydro,Hydro system reporting Error status!,5
